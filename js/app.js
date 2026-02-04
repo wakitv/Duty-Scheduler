@@ -848,39 +848,39 @@
         createExportContainer(schedule) {
             const days = ScheduleManager.getOrderedDays();
             const container = document.createElement('div');
-            container.style.cssText = 'position:fixed;left:-9999px;top:0;width:1100px;padding:30px;background:#fff;font-family:-apple-system,BlinkMacSystemFont,sans-serif;color:#0f172a;';
+            container.style.cssText = 'position:fixed;left:-9999px;top:0;width:1100px;padding:30px;background:linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 100%);font-family:-apple-system,BlinkMacSystemFont,sans-serif;color:#f0f0f5;';
             
             container.innerHTML = `
-                <div style="display:flex;align-items:center;gap:14px;margin-bottom:24px;padding-bottom:16px;border-bottom:3px solid #1e40af;">
-                    <img src="logo.png" style="width:50px;height:50px;border-radius:10px;" alt="Logo">
+                <div style="display:flex;align-items:center;gap:14px;margin-bottom:24px;padding-bottom:16px;border-bottom:2px solid #7c3aed;">
+                    <img src="logo.png" style="width:50px;height:50px;border-radius:10px;box-shadow:0 0 20px rgba(168,85,247,0.3);" alt="Logo">
                     <div>
-                        <h1 style="font-size:22px;font-weight:700;margin:0;color:#1e40af;">${this.escapeHtml(schedule.name)}</h1>
-                        <p style="font-size:13px;color:#64748b;margin:4px 0 0 0;">Duty Schedule • ${DateUtils.formatWeekRange(DateUtils.parseDate(schedule.startDate))}</p>
+                        <h1 style="font-size:22px;font-weight:700;margin:0;background:linear-gradient(135deg, #00d4ff, #a855f7);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">${this.escapeHtml(schedule.name)}</h1>
+                        <p style="font-size:13px;color:#a0a0b8;margin:4px 0 0 0;">Duty Schedule • ${DateUtils.formatWeekRange(DateUtils.parseDate(schedule.startDate))}</p>
                     </div>
                 </div>
                 <table style="width:100%;border-collapse:collapse;margin-bottom:16px;">
                     <thead>
                         <tr>
-                            <th style="background:#1e40af;color:#fff;padding:12px 10px;text-align:left;font-size:12px;border:1px solid #ddd;">Day / Date</th>
-                            <th style="background:#22c55e;color:#fff;padding:12px 10px;text-align:center;font-size:12px;border:1px solid #ddd;">Shift 1 (Day)</th>
-                            <th style="background:#8b5cf6;color:#fff;padding:12px 10px;text-align:center;font-size:12px;border:1px solid #ddd;">Shift 2 (Night)</th>
-                            <th style="background:#06b6d4;color:#fff;padding:12px 10px;text-align:center;font-size:12px;border:1px solid #ddd;">Shift 3 (Morning)</th>
+                            <th style="background:linear-gradient(135deg, #7c3aed, #0891b2);color:#fff;padding:12px 10px;text-align:left;font-size:12px;border:1px solid #252538;">Day / Date</th>
+                            <th style="background:#22c55e;color:#fff;padding:12px 10px;text-align:center;font-size:12px;border:1px solid #252538;">Shift 1 (Day)</th>
+                            <th style="background:#a855f7;color:#fff;padding:12px 10px;text-align:center;font-size:12px;border:1px solid #252538;">Shift 2 (Night)</th>
+                            <th style="background:#00d4ff;color:#0a0a14;padding:12px 10px;text-align:center;font-size:12px;border:1px solid #252538;">Shift 3 (Morning)</th>
                         </tr>
                     </thead>
                     <tbody>
                         ${days.map((day, i) => {
-                            const bg = i % 2 === 0 ? '#fff' : '#f8fafc';
+                            const bg = i % 2 === 0 ? '#151525' : '#1a1a2e';
                             const s1 = day.shifts.shift1, s2 = day.shifts.shift2, s3 = day.shifts.shift3;
                             return `<tr>
-                                <td style="background:#f1f5f9;padding:14px 10px;border:1px solid #e2e8f0;"><strong style="color:#1e40af;">${day.dayName}</strong><br><span style="font-size:12px;color:#64748b;">${day.monthNameShort} ${day.dayNumber}, ${day.year}</span></td>
-                                <td style="background:${bg};padding:14px 10px;text-align:center;border:1px solid #e2e8f0;border-left:3px solid #22c55e;"><div style="font-size:10px;color:#64748b;">${DateUtils.formatTime12h(s1.start)} - ${DateUtils.formatTime12h(s1.end)}</div><div style="font-size:14px;font-weight:600;color:${s1.employee ? '#0f172a' : '#94a3b8'};">${s1.employee || '—'}</div></td>
-                                <td style="background:${bg};padding:14px 10px;text-align:center;border:1px solid #e2e8f0;border-left:3px solid #8b5cf6;"><div style="font-size:10px;color:#64748b;">${DateUtils.formatTime12h(s2.start)} - ${DateUtils.formatTime12h(s2.end)}</div><div style="font-size:14px;font-weight:600;color:${s2.employee ? '#0f172a' : '#94a3b8'};">${s2.employee || '—'}</div></td>
-                                <td style="background:${bg};padding:14px 10px;text-align:center;border:1px solid #e2e8f0;border-left:3px solid #06b6d4;"><div style="font-size:10px;color:#64748b;">${DateUtils.formatTime12h(s3.start)} - ${DateUtils.formatTime12h(s3.end)}</div><div style="font-size:14px;font-weight:600;color:${s3.employee ? '#0f172a' : '#94a3b8'};">${s3.employee || '—'}</div></td>
+                                <td style="background:#12121f;padding:14px 10px;border:1px solid #252538;"><strong style="color:#00d4ff;">${day.dayName}</strong><br><span style="font-size:12px;color:#6b6b80;">${day.monthNameShort} ${day.dayNumber}, ${day.year}</span></td>
+                                <td style="background:${bg};padding:14px 10px;text-align:center;border:1px solid #252538;border-left:3px solid #22c55e;"><div style="font-size:10px;color:#6b6b80;">${DateUtils.formatTime12h(s1.start)} - ${DateUtils.formatTime12h(s1.end)}</div><div style="font-size:14px;font-weight:600;color:${s1.employee ? '#f0f0f5' : '#6b6b80'};">${s1.employee || '—'}</div></td>
+                                <td style="background:${bg};padding:14px 10px;text-align:center;border:1px solid #252538;border-left:3px solid #a855f7;"><div style="font-size:10px;color:#6b6b80;">${DateUtils.formatTime12h(s2.start)} - ${DateUtils.formatTime12h(s2.end)}</div><div style="font-size:14px;font-weight:600;color:${s2.employee ? '#f0f0f5' : '#6b6b80'};">${s2.employee || '—'}</div></td>
+                                <td style="background:${bg};padding:14px 10px;text-align:center;border:1px solid #252538;border-left:3px solid #00d4ff;"><div style="font-size:10px;color:#6b6b80;">${DateUtils.formatTime12h(s3.start)} - ${DateUtils.formatTime12h(s3.end)}</div><div style="font-size:14px;font-weight:600;color:${s3.employee ? '#f0f0f5' : '#6b6b80'};">${s3.employee || '—'}</div></td>
                             </tr>`;
                         }).join('')}
                     </tbody>
                 </table>
-                <div style="text-align:center;font-size:11px;color:#94a3b8;padding-top:12px;border-top:1px solid #e2e8f0;">Generated ${new Date().toLocaleDateString()} • Duty Schedule Maker</div>
+                <div style="text-align:center;font-size:11px;color:#6b6b80;padding-top:12px;border-top:1px solid #252538;">Generated ${new Date().toLocaleDateString()} • Duty Schedule Maker</div>
             `;
             return container;
         },
