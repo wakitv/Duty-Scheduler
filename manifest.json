@@ -1,0 +1,26 @@
+{
+    "name": "Duty Schedule Maker",
+    "short_name": "Duty Schedule",
+    "description": "Create and manage weekly duty schedules with ease",
+    "start_url": "/index.html",
+    "display": "standalone",
+    "background_color": "#f8fafc",
+    "theme_color": "#1e3a8a",
+    "orientation": "any",
+    "scope": "/",
+    "icons": [
+        {
+            "src": "icons/icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "logo.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any"
+        }
+    ],
+    "categories": ["productivity", "utilities", "business"]
+}
