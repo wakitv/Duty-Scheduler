@@ -3,7 +3,7 @@
  * Version 2.0
  */
 
-const CACHE_NAME = 'duty-schedule-v3';
+const CACHE_NAME = 'duty-schedule-v3.1';
 const ASSETS = [
     '/',
     '/index.html',
