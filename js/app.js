@@ -764,6 +764,19 @@ updateDutyCounts() {
             });
         },
 
+        removeEmployeeFromAllShifts(employeeName) {
+            const schedule = ScheduleManager.getCurrentSchedule();
+            if (!schedule) return;
+            
+            Object.keys(schedule.days).forEach(dateKey => {
+                ['shift1', 'shift2', 'shift3'].forEach(shiftId => {
+                    if (schedule.days[dateKey].shifts[shiftId].employee === employeeName) {
+                        ScheduleManager.removeEmployee(dateKey, shiftId);
+                    }
+                });
+            });
+        },
+
         openExportModal() {
             if (!ScheduleManager.getCurrentSchedule()) {
                 this.showToast('Generate schedule first', 'warning');
