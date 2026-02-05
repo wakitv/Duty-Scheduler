@@ -683,7 +683,7 @@
             this.updateDutyCounts();
         },
 
-        updateDutyCounts() {
+updateDutyCounts() {
             const panel = this.elements.dutyCountsPanel;
             const list = this.elements.dutyCountsList;
             if (!panel || !list) return;
@@ -714,13 +714,54 @@
             });
             
             list.innerHTML = sorted.map(([name, count]) => `
-                <div class="duty-count-item ${count === 0 ? 'zero' : ''}">
+                <div class="duty-count-item ${count === 0 ? 'zero' : ''}" data-employee="${this.escapeHtml(name)}">
                     <span class="duty-count-name" title="${this.escapeHtml(name)}">${this.escapeHtml(name)}</span>
                     <span class="duty-count-value">${count}</span>
+                    <button class="duty-count-remove" title="Remove ${this.escapeHtml(name)}" aria-label="Remove ${this.escapeHtml(name)}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
                 </div>
             `).join('');
             
+            // Add remove event listeners
+            list.querySelectorAll('.duty-count-remove').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const item = btn.closest('.duty-count-item');
+                    const empName = item.dataset.employee;
+                    
+                    // Remove employee from schedule assignments first
+                    this.removeEmployeeFromAllShifts(empName);
+                    
+                    // Remove from employees list
+                    ScheduleManager.removeEmployee(empName);
+                    
+                    // Update UI
+                    this.renderEmployees();
+                    this.updateEmployeeEmptyState();
+                    this.renderSchedule(ScheduleManager.getCurrentSchedule());
+                    this.updateStats();
+                    this.showToast(`${empName} removed`, 'info');
+                });
+            });
+            
             panel.classList.add('active');
+        },
+
+        removeEmployeeFromAllShifts(employeeName) {
+            const schedule = ScheduleManager.getCurrentSchedule();
+            if (!schedule) return;
+            
+            Object.keys(schedule.days).forEach(dateKey => {
+                ['shift1', 'shift2', 'shift3'].forEach(shiftId => {
+                    if (schedule.days[dateKey].shifts[shiftId].employee === employeeName) {
+                        ScheduleManager.removeEmployee(dateKey, shiftId);
+                    }
+                });
+            });
         },
 
         openExportModal() {
