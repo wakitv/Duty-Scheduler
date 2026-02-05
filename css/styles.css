@@ -740,8 +740,13 @@ body {
     border-radius: var(--radius-lg);
     padding: var(--space-sm);
     overflow-x: auto;
+    overflow-y: visible;
     -webkit-overflow-scrolling: touch;
     box-shadow: var(--shadow-sm);
+    /* Ensure full scroll width is accessible */
+    scroll-padding-right: var(--space-md);
+    /* Visual hint for scrollable content */
+    scrollbar-width: thin;
 }
 
 /* Empty State */
@@ -790,12 +795,16 @@ body {
 .schedule-grid {
     display: none;
     gap: var(--space-sm);
-    min-width: max-content;
+    /* Remove min-width: max-content to allow proper scrolling */
+    width: fit-content;
+    /* Add padding to ensure last column isn't cut off */
+    padding-right: var(--space-sm);
 }
 
 .schedule-grid.active {
     display: grid;
-    grid-template-columns: repeat(7, minmax(130px, 1fr));
+    /* Use fixed width columns for consistent display */
+    grid-template-columns: repeat(7, 130px);
 }
 
 .day-column {
@@ -803,7 +812,10 @@ body {
     border: 1px solid var(--border-color);
     border-radius: var(--radius-md);
     overflow: hidden;
+    /* Fixed width for consistent display */
+    width: 130px;
     min-width: 130px;
+    flex-shrink: 0;
     transition: all 0.25s;
 }
 
@@ -1364,9 +1376,47 @@ body {
 }
 
 /* ============================================
+   MOBILE SCHEDULE IMPROVEMENTS
+   ============================================ */
+/* Scroll hint gradient overlay - shows content continues */
+.schedule-container {
+    position: relative;
+}
+
+.schedule-container::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 30px;
+    background: linear-gradient(90deg, transparent, var(--bg-card));
+    pointer-events: none;
+    opacity: 1;
+    transition: opacity 0.3s ease;
+    border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+}
+
+/* Hide scroll hint when scrolled to the end */
+.schedule-container.scrolled-end::after {
+    opacity: 0;
+}
+
+/* Ensure schedule header info is visible */
+.schedule-header {
+    position: relative;
+    z-index: 2;
+}
+
+/* ============================================
    TABLET (768px+)
    ============================================ */
 @media (min-width: 768px) {
+    /* Remove scroll hint on tablets+ where grid fits */
+    .schedule-container::after {
+        display: none;
+    }
+    
     .tab-nav {
         display: none;
     }
@@ -1431,11 +1481,15 @@ body {
     }
     
     .schedule-grid.active {
-        grid-template-columns: repeat(7, 1fr);
+        /* On tablets, allow columns to be flexible but maintain minimum readability */
+        grid-template-columns: repeat(7, minmax(100px, 1fr));
+        width: 100%;
+        padding-right: 0;
     }
     
     .day-column {
-        min-width: auto;
+        width: auto;
+        min-width: 100px;
     }
     
     .toast-container {
