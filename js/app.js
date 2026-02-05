@@ -825,7 +825,7 @@
                 await new Promise(r => setTimeout(r, 200));
                 
                 const canvas = await html2canvas(container, {
-                    backgroundColor: '#ffffff',
+                    backgroundColor: '#0a0a14',
                     scale: 2,
                     useCORS: true,
                     logging: false
@@ -833,10 +833,80 @@
                 
                 document.body.removeChild(container);
                 
+                const filename = `${this.sanitize(schedule.name)}.jpg`;
+                
+                // Convert canvas to blob for sharing
+                const blob = await new Promise(resolve => {
+                    canvas.toBlob(resolve, 'image/jpeg', 0.95);
+                });
+                
+                // Check if on mobile/tablet and Web Share API is available
+                const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) 
+                    || (navigator.maxTouchPoints && navigator.maxTouchPoints > 2);
+                
+                if (isMobile && navigator.share && navigator.canShare) {
+                    // Use Web Share API for mobile - saves directly to gallery
+                    const file = new File([blob], filename, { type: 'image/jpeg' });
+                    
+                    if (navigator.canShare({ files: [file] })) {
+                        try {
+                            await navigator.share({
+                                files: [file],
+                                title: schedule.name,
+                                text: 'Duty Schedule'
+                            });
+                            UI.showToast('Image ready to save!', 'success');
+                            return;
+                        } catch (shareErr) {
+                            // User cancelled or share failed, fall back to download
+                            if (shareErr.name !== 'AbortError') {
+                                console.log('Share failed, falling back to download');
+                            }
+                        }
+                    }
+                }
+                
+                // Fallback: Direct download (for desktop or if share fails)
+                const url = URL.createObjectURL(blob);
                 const link = document.createElement('a');
-                link.download = `${this.sanitize(schedule.name)}.jpg`;
-                link.href = canvas.toDataURL('image/jpeg', 0.95);
+                link.href = url;
+                link.download = filename;
+                
+                // For iOS Safari fallback - open in new tab
+                if (/iPhone|iPad|iPod/i.test(navigator.userAgent) && !navigator.share) {
+                    // Open image in new tab for manual save
+                    const imgWindow = window.open('', '_blank');
+                    if (imgWindow) {
+                        imgWindow.document.write(`
+                            <!DOCTYPE html>
+                            <html>
+                            <head>
+                                <meta name="viewport" content="width=device-width, initial-scale=1">
+                                <title>${this.escapeHtml(schedule.name)}</title>
+                                <style>
+                                    body { margin: 0; padding: 20px; background: #0a0a14; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+                                    img { max-width: 100%; height: auto; border-radius: 8px; }
+                                    p { color: #fff; font-family: -apple-system, sans-serif; text-align: center; margin-top: 20px; font-size: 14px; }
+                                    .hint { color: #a855f7; font-weight: 600; }
+                                </style>
+                            </head>
+                            <body>
+                                <img src="${canvas.toDataURL('image/jpeg', 0.95)}" alt="Schedule">
+                                <p><span class="hint">Press and hold</span> the image, then tap <span class="hint">"Add to Photos"</span> to save to your gallery.</p>
+                            </body>
+                            </html>
+                        `);
+                        imgWindow.document.close();
+                        UI.showToast('Long press image to save', 'info');
+                    }
+                    URL.revokeObjectURL(url);
+                    return;
+                }
+                
+                document.body.appendChild(link);
                 link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
                 
                 UI.showToast('Image saved!', 'success');
             } catch (err) {
