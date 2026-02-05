@@ -381,6 +381,24 @@
             this.loadShiftConfig();
             this.setupTabs();
             this.updateEmployeeEmptyState();
+            this.setupScrollDetection();
+        },
+
+        setupScrollDetection() {
+            const container = this.elements.scheduleContainer;
+            if (!container) return;
+            
+            const checkScrollEnd = () => {
+                const threshold = 10; // pixels from end
+                const isAtEnd = container.scrollLeft + container.clientWidth >= container.scrollWidth - threshold;
+                container.classList.toggle('scrolled-end', isAtEnd);
+            };
+            
+            container.addEventListener('scroll', checkScrollEnd, { passive: true });
+            // Also check on window resize
+            window.addEventListener('resize', checkScrollEnd, { passive: true });
+            // Initial check
+            setTimeout(checkScrollEnd, 100);
         },
 
         cacheElements() {
@@ -610,6 +628,16 @@
             ScheduleManager.getOrderedDays().forEach(day => {
                 this.elements.scheduleGrid?.appendChild(this.createDayColumn(day));
             });
+            
+            // Trigger scroll check after render
+            setTimeout(() => {
+                const container = this.elements.scheduleContainer;
+                if (container) {
+                    const threshold = 10;
+                    const isAtEnd = container.scrollLeft + container.clientWidth >= container.scrollWidth - threshold;
+                    container.classList.toggle('scrolled-end', isAtEnd);
+                }
+            }, 50);
         },
 
         createDayColumn(day) {
