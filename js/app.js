@@ -866,7 +866,7 @@
     };
 
     // ============================================
-    // EXPORT MANAGER
+    // EXPORT MANAGER - PREMIUM DESIGN
     // ============================================
     const ExportManager = {
         async downloadImage() {
@@ -876,32 +876,173 @@
                 return;
             }
 
-            UI.showToast('Creating image...', 'info');
+            UI.showToast('Creating premium export...', 'info');
 
             try {
-                const container = document.getElementById('scheduleContainer');
-                if (!container || !window.html2canvas) {
+                if (!window.html2canvas) {
                     UI.showToast('Export not available', 'error');
                     return;
                 }
 
-                const canvas = await html2canvas(container, {
-                    backgroundColor: '#151525',
-                    scale: 2,
+                // Create premium export container
+                const exportContainer = this.createPremiumExportView(schedule);
+                document.body.appendChild(exportContainer);
+
+                // Wait for rendering
+                await new Promise(resolve => setTimeout(resolve, 150));
+
+                const canvas = await html2canvas(exportContainer, {
+                    backgroundColor: '#0a0a14',
+                    scale: 3,
                     logging: false,
-                    useCORS: true
+                    useCORS: true,
+                    allowTaint: true
                 });
+
+                // Remove export container
+                exportContainer.remove();
 
                 const link = document.createElement('a');
                 link.download = `schedule-${schedule.startDate}.jpg`;
-                link.href = canvas.toDataURL('image/jpeg', 0.95);
+                link.href = canvas.toDataURL('image/jpeg', 0.98);
                 link.click();
 
-                UI.showToast('Image saved!', 'success');
+                UI.showToast('Premium image saved!', 'success');
             } catch (error) {
                 console.error('Export error:', error);
                 UI.showToast('Export failed', 'error');
             }
+        },
+
+        createPremiumExportView(schedule) {
+            const container = document.createElement('div');
+            container.className = 'premium-export-container';
+            container.style.cssText = `
+                position: fixed;
+                left: -9999px;
+                top: 0;
+                width: 1500px;
+                padding: 30px;
+                background: linear-gradient(180deg, #0a0a14 0%, #0d0d1a 100%);
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                color: #f0f0f5;
+            `;
+
+            const days = ScheduleManager.getOrderedDays();
+            const startDay = days[0];
+            const endDay = days[6];
+            const dateCoverage = `${startDay.monthName} ${startDay.dayNumber} - ${endDay.monthName} ${endDay.dayNumber}, ${startDay.year}`;
+
+            container.innerHTML = `
+                <!-- DATE COVERAGE HEADER -->
+                <div style="text-align: center; margin-bottom: 24px;">
+                    <div style="display: inline-flex; align-items: center; gap: 12px; padding: 12px 28px; background: linear-gradient(135deg, rgba(168,85,247,0.2) 0%, rgba(0,212,255,0.2) 100%); border: 1px solid rgba(168,85,247,0.3); border-radius: 50px;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#00d4ff" stroke-width="2">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="16" y1="2" x2="16" y2="6"></line>
+                            <line x1="8" y1="2" x2="8" y2="6"></line>
+                            <line x1="3" y1="10" x2="21" y2="10"></line>
+                        </svg>
+                        <span style="font-size: 18px; font-weight: 700; background: linear-gradient(135deg, #00d4ff 0%, #a855f7 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">${dateCoverage}</span>
+                    </div>
+                </div>
+
+                <!-- SCHEDULE GRID -->
+                <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px;">
+                    ${this.generateDayColumns(schedule)}
+                </div>
+            `;
+
+            return container;
+        },
+
+        generateDayColumns(schedule) {
+            const days = ScheduleManager.getOrderedDays();
+            return days.map(day => {
+                const isWeekend = day.isWeekend;
+                const columnBg = isWeekend 
+                    ? 'background: linear-gradient(180deg, rgba(168,85,247,0.12) 0%, rgba(168,85,247,0.05) 100%);' 
+                    : 'background: rgba(15,15,26,0.9);';
+                
+                return `
+                    <div style="${columnBg} border: 1px solid rgba(45,45,68,0.8); border-radius: 16px; overflow: hidden;">
+                        <!-- Day Header -->
+                        <div style="background: linear-gradient(135deg, #7c3aed 0%, #0891b2 100%); padding: 18px 12px; text-align: center;">
+                            <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; color: rgba(255,255,255,0.9); margin-bottom: 6px;">${day.dayNameShort}</div>
+                            <div style="font-size: 42px; font-weight: 800; color: #ffffff; line-height: 1; font-family: 'SF Mono', 'Menlo', monospace;">${day.dayNumber}</div>
+                            <div style="font-size: 12px; font-weight: 600; text-transform: uppercase; color: rgba(255,255,255,0.8); margin-top: 4px; letter-spacing: 1px;">${day.monthNameShort}</div>
+                        </div>
+                        <!-- Shifts -->
+                        <div style="padding: 10px;">
+                            ${this.generateShiftSlots(day)}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        },
+
+        generateShiftSlots(day) {
+            const shifts = ['shift1', 'shift2', 'shift3'];
+            const shiftColors = {
+                shift1: { dot: '#22c55e', border: 'rgba(34,197,94,0.3)' },
+                shift2: { dot: '#a855f7', border: 'rgba(168,85,247,0.3)' },
+                shift3: { dot: '#00d4ff', border: 'rgba(0,212,255,0.3)' }
+            };
+            const shiftLabels = { shift1: 'S1', shift2: 'S2', shift3: 'S3' };
+
+            return shifts.map(shiftId => {
+                const shift = day.shifts[shiftId];
+                const colors = shiftColors[shiftId];
+                const time = `${DateUtils.formatTime12h(shift.start)} - ${DateUtils.formatTime12h(shift.end)}`;
+                const employee = shift.employee;
+
+                return `
+                    <div style="background: rgba(20,20,35,0.7); border: 1px solid ${colors.border}; border-radius: 12px; padding: 12px; margin-bottom: 10px; ${!employee ? 'border-style: dashed; opacity: 0.7;' : ''}">
+                        <!-- Time & Shift Label -->
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <span style="font-family: 'SF Mono', monospace; font-size: 11px; color: #6b6b80; line-height: 1.3;">${time.replace(' - ', ' -<br>')}</span>
+                            <span style="font-family: 'SF Mono', monospace; font-size: 11px; font-weight: 700; color: #a0a0b8; background: rgba(30,30,50,0.9); padding: 4px 10px; border-radius: 6px;">${shiftLabels[shiftId]}</span>
+                        </div>
+                        <!-- Employee -->
+                        ${employee ? `
+                            <div style="background: rgba(25,25,45,0.9); border: 1px solid rgba(45,45,68,0.8); border-radius: 8px; padding: 12px 14px; display: flex; align-items: center; gap: 10px;">
+                                <div style="width: 10px; height: 10px; background: ${colors.dot}; border-radius: 50%; box-shadow: 0 0 10px ${colors.dot}, 0 0 20px ${colors.dot}40; flex-shrink: 0;"></div>
+                                <span style="font-size: 14px; font-weight: 600; color: #f0f0f5;">${this.escapeHtml(employee)}</span>
+                            </div>
+                        ` : `
+                            <div style="background: rgba(20,20,35,0.5); border: 1px dashed rgba(45,45,68,0.6); border-radius: 8px; padding: 12px 14px; text-align: center;">
+                                <span style="font-size: 13px; color: #4a4a60; font-style: italic;">Unassigned</span>
+                            </div>
+                        `}
+                    </div>
+                `;
+            }).join('');
+        },
+
+        getDutyCounts(schedule) {
+            const employees = ScheduleManager.getEmployees();
+            const counts = {};
+            employees.forEach(emp => counts[emp] = 0);
+            
+            Object.values(schedule.days).forEach(day => {
+                ['shift1', 'shift2', 'shift3'].forEach(shiftId => {
+                    const employee = day.shifts[shiftId]?.employee;
+                    if (employee && counts.hasOwnProperty(employee)) {
+                        counts[employee]++;
+                    }
+                });
+            });
+            
+            return Object.entries(counts).sort((a, b) => {
+                if (b[1] !== a[1]) return b[1] - a[1];
+                return a[0].localeCompare(b[0]);
+            });
+        },
+
+        escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         },
 
         async copyToClipboard() {
@@ -931,6 +1072,16 @@
 
         generateTextSchedule(schedule) {
             let text = `📅 ${schedule.name}\n${'═'.repeat(40)}\n\n`;
+
+            // Add duty counts summary
+            const dutyCounts = this.getDutyCounts(schedule);
+            if (dutyCounts.length > 0) {
+                text += `👥 TEAM ASSIGNMENT SUMMARY\n${'─'.repeat(30)}\n`;
+                dutyCounts.forEach(([name, count]) => {
+                    text += `   ${name}: ${count} shifts\n`;
+                });
+                text += '\n';
+            }
 
             const days = ScheduleManager.getOrderedDays();
             days.forEach(day => {
