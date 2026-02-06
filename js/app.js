@@ -1,7 +1,6 @@
 /**
  * Duty Schedule Maker - Complete PWA Application
- * All modules combined for better offline caching
- * Version 2.0 - Blue/White Theme
+ * Version 2.1 - With Employee Duty Counts
  */
 
 (function() {
@@ -242,7 +241,7 @@
             return true;
         },
 
-        removeEmployee(dateKey, shiftId) {
+        removeEmployeeFromShift(dateKey, shiftId) {
             return this.assignEmployee(dateKey, shiftId, null);
         },
 
@@ -488,7 +487,6 @@
             this.updateStats();
             this.showToast('Schedule created!', 'success');
 
-            // Switch to schedule tab on mobile
             const scheduleTab = document.querySelector('[data-tab="schedule"]');
             if (scheduleTab && window.innerWidth < 768) {
                 scheduleTab.click();
@@ -645,7 +643,7 @@
             const removeBtn = slot.querySelector('.remove-btn');
             if (removeBtn) {
                 removeBtn.addEventListener('click', () => {
-                    ScheduleManager.removeEmployee(dateKey, shiftId);
+                    ScheduleManager.removeEmployeeFromShift(dateKey, shiftId);
                     this.refreshSlot(slot);
                     this.updateStats();
                 });
@@ -683,7 +681,7 @@
             this.updateDutyCounts();
         },
 
-updateDutyCounts() {
+        updateDutyCounts() {
             const panel = this.elements.dutyCountsPanel;
             const list = this.elements.dutyCountsList;
             if (!panel || !list) return;
@@ -726,20 +724,15 @@ updateDutyCounts() {
                 </div>
             `).join('');
             
-            // Add remove event listeners
             list.querySelectorAll('.duty-count-remove').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     e.stopPropagation();
                     const item = btn.closest('.duty-count-item');
                     const empName = item.dataset.employee;
                     
-                    // Remove employee from schedule assignments first
                     this.removeEmployeeFromAllShifts(empName);
-                    
-                    // Remove from employees list
                     ScheduleManager.removeEmployee(empName);
                     
-                    // Update UI
                     this.renderEmployees();
                     this.updateEmployeeEmptyState();
                     this.renderSchedule(ScheduleManager.getCurrentSchedule());
@@ -758,20 +751,7 @@ updateDutyCounts() {
             Object.keys(schedule.days).forEach(dateKey => {
                 ['shift1', 'shift2', 'shift3'].forEach(shiftId => {
                     if (schedule.days[dateKey].shifts[shiftId].employee === employeeName) {
-                        ScheduleManager.removeEmployee(dateKey, shiftId);
-                    }
-                });
-            });
-        },
-
-        removeEmployeeFromAllShifts(employeeName) {
-            const schedule = ScheduleManager.getCurrentSchedule();
-            if (!schedule) return;
-            
-            Object.keys(schedule.days).forEach(dateKey => {
-                ['shift1', 'shift2', 'shift3'].forEach(shiftId => {
-                    if (schedule.days[dateKey].shifts[shiftId].employee === employeeName) {
-                        ScheduleManager.removeEmployee(dateKey, shiftId);
+                        ScheduleManager.removeEmployeeFromShift(dateKey, shiftId);
                     }
                 });
             });
@@ -937,7 +917,6 @@ updateDutyCounts() {
                 await navigator.clipboard.writeText(text);
                 UI.showToast('Copied to clipboard!', 'success');
             } catch (error) {
-                // Fallback
                 const textarea = document.createElement('textarea');
                 textarea.value = text;
                 textarea.style.position = 'fixed';
@@ -1065,7 +1044,7 @@ updateDutyCounts() {
         ScheduleManager.init();
         UI.init();
         PWA.init();
-        console.log('✅ Duty Schedule Maker v2.0 initialized');
+        console.log('✅ Duty Schedule Maker v2.1 initialized');
     }
 
     if (document.readyState === 'loading') {
@@ -1074,6 +1053,5 @@ updateDutyCounts() {
         init();
     }
 
-    // Global access for debugging
     window.DutyScheduler = { DateUtils, Storage, ScheduleManager, UI, ExportManager, PWA };
 })();
