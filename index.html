@@ -342,14 +342,13 @@
         </div>
     </div>
 
-    <!-- html2canvas for image export (with fallback) -->
+    <!-- html2canvas for image export -->
     <script>
-        // Inline fallback if CDN fails
         window.html2canvasLoaded = false;
     </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" 
             onload="window.html2canvasLoaded=true" 
-            onerror="console.warn('html2canvas CDN failed, image export may not work offline')"></script>
+            onerror="console.warn('html2canvas CDN failed')"></script>
     
     <!-- App Scripts -->
     <script src="js/app.js"></script>
