@@ -153,15 +153,35 @@
     // ============================================
     const ScheduleManager = {
         currentSchedule: null,
-        employees: [],
+        employees: [], // Now stores {name: string, color: string}
         shiftConfig: {
-            shift1: { start: '12:00', end: '20:00' },
-            shift2: { start: '20:00', end: '04:00' },
-            shift3: { start: '04:00', end: '12:00' }
+            shift1: { start: '04:00', end: '12:00' },
+            shift2: { start: '12:00', end: '20:00' },
+            shift3: { start: '20:00', end: '04:00' }
+        },
+
+        // Color definitions
+        colors: {
+            green: '#22c55e',
+            blue: '#3b82f6',
+            violet: '#a855f7',
+            pink: '#ec4899',
+            yellow: '#fbbf24',
+            red: '#ef4444',
+            rainbow: 'linear-gradient(135deg, #ff0000, #ff8000, #ffff00, #00ff00, #0080ff, #8000ff)'
         },
 
         init() {
-            this.employees = Storage.get(Storage.KEYS.EMPLOYEES) || [];
+            const savedEmployees = Storage.get(Storage.KEYS.EMPLOYEES) || [];
+            // Migrate old format (string array) to new format (object array)
+            this.employees = savedEmployees.map(emp => {
+                if (typeof emp === 'string') {
+                    return { name: emp, color: 'green' };
+                }
+                return emp;
+            });
+            Storage.set(Storage.KEYS.EMPLOYEES, this.employees);
+            
             this.currentSchedule = Storage.get(Storage.KEYS.CURRENT);
             const savedConfig = Storage.get(Storage.KEYS.SHIFT_CONFIG);
             if (savedConfig) this.shiftConfig = savedConfig;
@@ -171,16 +191,29 @@
             return [...this.employees];
         },
 
-        addEmployee(name) {
+        getEmployeeByName(name) {
+            return this.employees.find(emp => emp.name === name);
+        },
+
+        getEmployeeColor(name) {
+            const emp = this.getEmployeeByName(name);
+            return emp ? emp.color : 'green';
+        },
+
+        getColorHex(colorName) {
+            return this.colors[colorName] || this.colors.green;
+        },
+
+        addEmployee(name, color = 'green') {
             const trimmed = name.trim();
-            if (!trimmed || this.employees.includes(trimmed)) return false;
-            this.employees.push(trimmed);
+            if (!trimmed || this.employees.some(emp => emp.name === trimmed)) return false;
+            this.employees.push({ name: trimmed, color });
             Storage.set(Storage.KEYS.EMPLOYEES, this.employees);
             return true;
         },
 
         removeEmployee(name) {
-            const index = this.employees.indexOf(name);
+            const index = this.employees.findIndex(emp => emp.name === name);
             if (index === -1) return false;
             this.employees.splice(index, 1);
             Storage.set(Storage.KEYS.EMPLOYEES, this.employees);
@@ -254,7 +287,7 @@
             days.forEach(day => {
                 ['shift1', 'shift2', 'shift3'].forEach(shiftId => {
                     if (!day.shifts[shiftId].employee) {
-                        day.shifts[shiftId].employee = this.employees[empIndex % this.employees.length];
+                        day.shifts[shiftId].employee = this.employees[empIndex % this.employees.length].name;
                         empIndex++;
                     }
                 });
@@ -360,7 +393,7 @@
         cacheElements() {
             const ids = [
                 'startDate', 'scheduleName', 'generateBtn', 'saveScheduleBtn', 'loadScheduleBtn',
-                'exportBtn', 'employeeName', 'addEmployeeBtn', 'employeeList', 'employeeEmpty',
+                'exportBtn', 'employeeName', 'employeeColor', 'addEmployeeBtn', 'employeeList', 'employeeEmpty',
                 'scheduleContainer', 'scheduleGrid', 'emptyState', 'scheduleTitle', 'toastContainer',
                 'shift1Start', 'shift1End', 'shift2Start', 'shift2End', 'shift3Start', 'shift3End',
                 'autoFillBtn', 'clearAllBtn', 'statsPanel', 'assignedShifts', 'unassignedShifts',
@@ -495,12 +528,14 @@
 
         handleAddEmployee() {
             const name = this.elements.employeeName?.value?.trim();
+            const color = this.elements.employeeColor?.value || 'green';
+            
             if (!name) {
                 this.showToast('Enter employee name', 'warning');
                 return;
             }
 
-            if (ScheduleManager.addEmployee(name)) {
+            if (ScheduleManager.addEmployee(name, color)) {
                 this.elements.employeeName.value = '';
                 this.renderEmployees();
                 this.updateEmployeeEmptyState();
@@ -546,8 +581,9 @@
             if (!this.elements.employeeList) return;
             this.elements.employeeList.innerHTML = employees.map(emp => `
                 <div class="employee-tag">
-                    <span>${this.escapeHtml(emp)}</span>
-                    <button class="tag-remove" data-employee="${this.escapeHtml(emp)}" aria-label="Remove ${this.escapeHtml(emp)}">
+                    <span class="color-dot ${emp.color}"></span>
+                    <span>${this.escapeHtml(emp.name)}</span>
+                    <button class="tag-remove" data-employee="${this.escapeHtml(emp.name)}" aria-label="Remove ${this.escapeHtml(emp.name)}">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                     </button>
                 </div>
@@ -611,12 +647,20 @@
             
             let content = '';
             if (shift.employee) {
+                const empColor = ScheduleManager.getEmployeeColor(shift.employee);
+                const colorHex = ScheduleManager.getColorHex(empColor);
+                const isRainbow = empColor === 'rainbow';
+                const dotStyle = isRainbow 
+                    ? 'background: linear-gradient(135deg, #ff0000, #ff8000, #ffff00, #00ff00, #0080ff, #8000ff);'
+                    : `background: ${colorHex}; box-shadow: 0 0 8px ${colorHex};`;
+                
                 content = `<div class="assigned-employee">
+                    <div style="width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; ${dotStyle}"></div>
                     <span>${this.escapeHtml(shift.employee)}</span>
                     <button class="remove-btn" aria-label="Remove assignment"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
                 </div>`;
             } else {
-                content = `<select class="employee-select" aria-label="Assign employee"><option value="">Select...</option>${employees.map(e => `<option value="${this.escapeHtml(e)}">${this.escapeHtml(e)}</option>`).join('')}</select>`;
+                content = `<select class="employee-select" aria-label="Assign employee"><option value="">Select...</option>${employees.map(e => `<option value="${this.escapeHtml(e.name)}">${this.escapeHtml(e.name)}</option>`).join('')}</select>`;
             }
             
             return `<div class="shift-slot ${shiftId}-slot" data-date="${dateKey}" data-shift="${shiftId}">
@@ -695,7 +739,7 @@
             }
             
             const counts = {};
-            employees.forEach(emp => counts[emp] = 0);
+            employees.forEach(emp => counts[emp.name] = 0);
             
             Object.values(schedule.days).forEach(day => {
                 ['shift1', 'shift2', 'shift3'].forEach(shiftId => {
@@ -711,8 +755,17 @@
                 return a[0].localeCompare(b[0]);
             });
             
-            list.innerHTML = sorted.map(([name, count]) => `
+            list.innerHTML = sorted.map(([name, count]) => {
+                const empColor = ScheduleManager.getEmployeeColor(name);
+                const colorHex = ScheduleManager.getColorHex(empColor);
+                const isRainbow = empColor === 'rainbow';
+                const dotStyle = isRainbow 
+                    ? 'background: linear-gradient(135deg, #ff0000, #ff8000, #ffff00, #00ff00, #0080ff, #8000ff);'
+                    : `background: ${colorHex}; box-shadow: 0 0 8px ${colorHex}50;`;
+                
+                return `
                 <div class="duty-count-item ${count === 0 ? 'zero' : ''}" data-employee="${this.escapeHtml(name)}">
+                    <span style="width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; ${dotStyle}"></span>
                     <span class="duty-count-name" title="${this.escapeHtml(name)}">${this.escapeHtml(name)}</span>
                     <span class="duty-count-value">${count}</span>
                     <button class="duty-count-remove" title="Remove ${this.escapeHtml(name)}" aria-label="Remove ${this.escapeHtml(name)}">
@@ -722,7 +775,7 @@
                         </svg>
                     </button>
                 </div>
-            `).join('');
+            `}).join('');
             
             list.querySelectorAll('.duty-count-remove').forEach(btn => {
                 btn.addEventListener('click', (e) => {
@@ -876,7 +929,7 @@
                 return;
             }
 
-            UI.showToast('Creating premium export...', 'info');
+            UI.showToast('Creating image...', 'info');
 
             try {
                 if (!window.html2canvas) {
@@ -892,7 +945,7 @@
                 await new Promise(resolve => setTimeout(resolve, 150));
 
                 const canvas = await html2canvas(exportContainer, {
-                    backgroundColor: '#0a0a14',
+                    backgroundColor: '#f8fafc',
                     scale: 3,
                     logging: false,
                     useCORS: true,
@@ -902,12 +955,120 @@
                 // Remove export container
                 exportContainer.remove();
 
-                const link = document.createElement('a');
-                link.download = `schedule-${schedule.startDate}.jpg`;
-                link.href = canvas.toDataURL('image/jpeg', 0.98);
-                link.click();
+                const filename = `schedule-${schedule.startDate}.jpg`;
+                
+                // Detect device type
+                const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+                const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+                const isAndroid = /Android/i.test(navigator.userAgent);
 
-                UI.showToast('Premium image saved!', 'success');
+                // Convert to blob
+                canvas.toBlob(async (blob) => {
+                    if (!blob) {
+                        UI.showToast('Export failed', 'error');
+                        return;
+                    }
+
+                    // MOBILE: Use Web Share API to save directly to gallery
+                    if (isMobile && navigator.share && navigator.canShare) {
+                        const file = new File([blob], filename, { type: 'image/jpeg' });
+                        const shareData = { files: [file] };
+                        
+                        if (navigator.canShare(shareData)) {
+                            try {
+                                await navigator.share(shareData);
+                                UI.showToast('Saved to gallery!', 'success');
+                                return;
+                            } catch (err) {
+                                if (err.name === 'AbortError') {
+                                    UI.showToast('Save cancelled', 'info');
+                                    return;
+                                }
+                                console.log('Share failed, trying fallback...');
+                            }
+                        }
+                    }
+
+                    // MOBILE FALLBACK: Open image for manual save
+                    if (isMobile) {
+                        const url = URL.createObjectURL(blob);
+                        
+                        if (isIOS) {
+                            // iOS: Open in new tab for long-press save
+                            const newTab = window.open();
+                            if (newTab) {
+                                newTab.document.write(`
+                                    <!DOCTYPE html>
+                                    <html>
+                                    <head>
+                                        <title>Save to Photos</title>
+                                        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=3">
+                                        <style>
+                                            * { margin: 0; padding: 0; box-sizing: border-box; }
+                                            body { 
+                                                background: #000; 
+                                                min-height: 100vh;
+                                                display: flex; 
+                                                flex-direction: column; 
+                                                align-items: center; 
+                                                padding: 20px;
+                                                font-family: -apple-system, sans-serif; 
+                                            }
+                                            .instructions {
+                                                background: linear-gradient(135deg, #7c3aed, #0891b2);
+                                                color: #fff; 
+                                                padding: 16px 24px; 
+                                                border-radius: 12px;
+                                                text-align: center; 
+                                                font-size: 16px;
+                                                font-weight: 600;
+                                                margin-bottom: 20px;
+                                                line-height: 1.5;
+                                            }
+                                            img { 
+                                                max-width: 100%; 
+                                                height: auto; 
+                                                border-radius: 12px;
+                                                box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+                                            }
+                                        </style>
+                                    </head>
+                                    <body>
+                                        <div class="instructions">
+                                            📱 Long press on image<br>then tap "Add to Photos"
+                                        </div>
+                                        <img src="${url}" alt="Schedule">
+                                    </body>
+                                    </html>
+                                `);
+                                newTab.document.close();
+                                UI.showToast('Long press to save!', 'info');
+                            }
+                        } else if (isAndroid) {
+                            // Android: Try download, or open image
+                            const link = document.createElement('a');
+                            link.href = url;
+                            link.download = filename;
+                            link.click();
+                            UI.showToast('Saved to Downloads!', 'success');
+                        }
+                        
+                        setTimeout(() => URL.revokeObjectURL(url), 30000);
+                        return;
+                    }
+
+                    // DESKTOP: Normal download
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = filename;
+                    link.click();
+                    
+                    UI.showToast('Image saved!', 'success');
+                    setTimeout(() => URL.revokeObjectURL(url), 10000);
+                    
+                }, 'image/jpeg', 0.98);
+
             } catch (error) {
                 console.error('Export error:', error);
                 UI.showToast('Export failed', 'error');
@@ -922,10 +1083,10 @@
                 left: -9999px;
                 top: 0;
                 width: 1500px;
-                padding: 30px;
-                background: linear-gradient(180deg, #0a0a14 0%, #0d0d1a 100%);
+                padding: 40px;
+                background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
                 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                color: #f0f0f5;
+                color: #1e293b;
             `;
 
             const days = ScheduleManager.getOrderedDays();
@@ -935,21 +1096,26 @@
 
             container.innerHTML = `
                 <!-- DATE COVERAGE HEADER -->
-                <div style="text-align: center; margin-bottom: 24px;">
-                    <div style="display: inline-flex; align-items: center; gap: 12px; padding: 12px 28px; background: linear-gradient(135deg, rgba(168,85,247,0.2) 0%, rgba(0,212,255,0.2) 100%); border: 1px solid rgba(168,85,247,0.3); border-radius: 50px;">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#00d4ff" stroke-width="2">
+                <div style="text-align: center; margin-bottom: 28px;">
+                    <div style="display: inline-flex; align-items: center; gap: 14px; padding: 14px 32px; background: linear-gradient(135deg, #7c3aed 0%, #0891b2 100%); border-radius: 50px; box-shadow: 0 4px 20px rgba(124,58,237,0.3);">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
                             <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
                             <line x1="16" y1="2" x2="16" y2="6"></line>
                             <line x1="8" y1="2" x2="8" y2="6"></line>
                             <line x1="3" y1="10" x2="21" y2="10"></line>
                         </svg>
-                        <span style="font-size: 18px; font-weight: 700; background: linear-gradient(135deg, #00d4ff 0%, #a855f7 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">${dateCoverage}</span>
+                        <span style="font-size: 20px; font-weight: 700; color: #ffffff; letter-spacing: 0.5px;">${dateCoverage}</span>
                     </div>
                 </div>
 
                 <!-- SCHEDULE GRID -->
-                <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px;">
+                <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 12px;">
                     ${this.generateDayColumns(schedule)}
+                </div>
+
+                <!-- FOOTER -->
+                <div style="margin-top: 24px; text-align: center;">
+                    <span style="font-size: 12px; color: #94a3b8; font-weight: 500;">Generated by Duty Schedule Maker</span>
                 </div>
             `;
 
@@ -961,19 +1127,19 @@
             return days.map(day => {
                 const isWeekend = day.isWeekend;
                 const columnBg = isWeekend 
-                    ? 'background: linear-gradient(180deg, rgba(168,85,247,0.12) 0%, rgba(168,85,247,0.05) 100%);' 
-                    : 'background: rgba(15,15,26,0.9);';
+                    ? 'background: linear-gradient(180deg, #faf5ff 0%, #f3e8ff 100%); border: 2px solid #e9d5ff;' 
+                    : 'background: #ffffff; border: 1px solid #e2e8f0;';
                 
                 return `
-                    <div style="${columnBg} border: 1px solid rgba(45,45,68,0.8); border-radius: 16px; overflow: hidden;">
+                    <div style="${columnBg} border-radius: 16px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
                         <!-- Day Header -->
                         <div style="background: linear-gradient(135deg, #7c3aed 0%, #0891b2 100%); padding: 18px 12px; text-align: center;">
                             <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; color: rgba(255,255,255,0.9); margin-bottom: 6px;">${day.dayNameShort}</div>
                             <div style="font-size: 42px; font-weight: 800; color: #ffffff; line-height: 1; font-family: 'SF Mono', 'Menlo', monospace;">${day.dayNumber}</div>
-                            <div style="font-size: 12px; font-weight: 600; text-transform: uppercase; color: rgba(255,255,255,0.8); margin-top: 4px; letter-spacing: 1px;">${day.monthNameShort}</div>
+                            <div style="font-size: 12px; font-weight: 600; text-transform: uppercase; color: rgba(255,255,255,0.85); margin-top: 4px; letter-spacing: 1px;">${day.monthNameShort}</div>
                         </div>
                         <!-- Shifts -->
-                        <div style="padding: 10px;">
+                        <div style="padding: 12px;">
                             ${this.generateShiftSlots(day)}
                         </div>
                     </div>
@@ -983,35 +1149,53 @@
 
         generateShiftSlots(day) {
             const shifts = ['shift1', 'shift2', 'shift3'];
-            const shiftColors = {
-                shift1: { dot: '#22c55e', border: 'rgba(34,197,94,0.3)' },
-                shift2: { dot: '#a855f7', border: 'rgba(168,85,247,0.3)' },
-                shift3: { dot: '#00d4ff', border: 'rgba(0,212,255,0.3)' }
-            };
             const shiftLabels = { shift1: 'S1', shift2: 'S2', shift3: 'S3' };
+            const shiftBgColors = {
+                shift1: '#f0fdf4', // Light green tint for morning
+                shift2: '#fefce8', // Light yellow tint for day  
+                shift3: '#f0f9ff'  // Light blue tint for night
+            };
 
             return shifts.map(shiftId => {
                 const shift = day.shifts[shiftId];
-                const colors = shiftColors[shiftId];
                 const time = `${DateUtils.formatTime12h(shift.start)} - ${DateUtils.formatTime12h(shift.end)}`;
                 const employee = shift.employee;
+                const bgColor = shiftBgColors[shiftId];
+
+                // Get employee color
+                let dotStyle = '';
+                let textColor = '#1e293b';
+                if (employee) {
+                    const empColor = ScheduleManager.getEmployeeColor(employee);
+                    const colorHex = ScheduleManager.getColorHex(empColor);
+                    const isRainbow = empColor === 'rainbow';
+                    
+                    if (isRainbow) {
+                        dotStyle = 'background: linear-gradient(135deg, #ff0000, #ff8000, #ffff00, #00ff00, #0080ff, #8000ff);';
+                        textColor = '#7c3aed';
+                    } else {
+                        dotStyle = `background: ${colorHex}; box-shadow: 0 2px 8px ${colorHex}50;`;
+                        // Darken the color for text readability on light background
+                        textColor = this.darkenColor(colorHex);
+                    }
+                }
 
                 return `
-                    <div style="background: rgba(20,20,35,0.7); border: 1px solid ${colors.border}; border-radius: 12px; padding: 12px; margin-bottom: 10px; ${!employee ? 'border-style: dashed; opacity: 0.7;' : ''}">
+                    <div style="background: ${bgColor}; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px; margin-bottom: 10px; ${!employee ? 'border-style: dashed; border-color: #cbd5e1;' : ''}">
                         <!-- Time & Shift Label -->
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                            <span style="font-family: 'SF Mono', monospace; font-size: 11px; color: #6b6b80; line-height: 1.3;">${time.replace(' - ', ' -<br>')}</span>
-                            <span style="font-family: 'SF Mono', monospace; font-size: 11px; font-weight: 700; color: #a0a0b8; background: rgba(30,30,50,0.9); padding: 4px 10px; border-radius: 6px;">${shiftLabels[shiftId]}</span>
+                            <span style="font-family: 'SF Mono', monospace; font-size: 11px; color: #64748b; line-height: 1.3;">${time.replace(' - ', ' -<br>')}</span>
+                            <span style="font-family: 'SF Mono', monospace; font-size: 11px; font-weight: 700; color: #7c3aed; background: #f3e8ff; padding: 4px 10px; border-radius: 6px;">${shiftLabels[shiftId]}</span>
                         </div>
                         <!-- Employee -->
                         ${employee ? `
-                            <div style="background: rgba(25,25,45,0.9); border: 1px solid rgba(45,45,68,0.8); border-radius: 8px; padding: 12px 14px; display: flex; align-items: center; gap: 10px;">
-                                <div style="width: 10px; height: 10px; background: ${colors.dot}; border-radius: 50%; box-shadow: 0 0 10px ${colors.dot}, 0 0 20px ${colors.dot}40; flex-shrink: 0;"></div>
-                                <span style="font-size: 14px; font-weight: 600; color: #f0f0f5;">${this.escapeHtml(employee)}</span>
+                            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 14px; display: flex; align-items: center; gap: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                                <div style="width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; ${dotStyle}"></div>
+                                <span style="font-size: 14px; font-weight: 700; color: ${textColor}; text-transform: uppercase; letter-spacing: 0.5px;">${this.escapeHtml(employee)}</span>
                             </div>
                         ` : `
-                            <div style="background: rgba(20,20,35,0.5); border: 1px dashed rgba(45,45,68,0.6); border-radius: 8px; padding: 12px 14px; text-align: center;">
-                                <span style="font-size: 13px; color: #4a4a60; font-style: italic;">Unassigned</span>
+                            <div style="background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px; padding: 12px 14px; text-align: center;">
+                                <span style="font-size: 13px; color: #94a3b8; font-style: italic;">Unassigned</span>
                             </div>
                         `}
                     </div>
@@ -1019,10 +1203,23 @@
             }).join('');
         },
 
+        // Helper to darken colors for better text readability
+        darkenColor(hex) {
+            const colorMap = {
+                '#22c55e': '#166534', // green -> dark green
+                '#3b82f6': '#1d4ed8', // blue -> dark blue
+                '#a855f7': '#7c3aed', // violet -> dark violet
+                '#ec4899': '#be185d', // pink -> dark pink
+                '#fbbf24': '#b45309', // yellow -> dark amber
+                '#ef4444': '#dc2626', // red -> dark red
+            };
+            return colorMap[hex] || hex;
+        },
+
         getDutyCounts(schedule) {
             const employees = ScheduleManager.getEmployees();
             const counts = {};
-            employees.forEach(emp => counts[emp] = 0);
+            employees.forEach(emp => counts[emp.name] = 0);
             
             Object.values(schedule.days).forEach(day => {
                 ['shift1', 'shift2', 'shift3'].forEach(shiftId => {
@@ -1078,7 +1275,7 @@
             if (dutyCounts.length > 0) {
                 text += `👥 TEAM ASSIGNMENT SUMMARY\n${'─'.repeat(30)}\n`;
                 dutyCounts.forEach(([name, count]) => {
-                    text += `   ${name}: ${count} shifts\n`;
+                    text += `   ${name.toUpperCase()}: ${count} shifts\n`;
                 });
                 text += '\n';
             }
@@ -1092,7 +1289,7 @@
                 ['shift1', 'shift2', 'shift3'].forEach((shiftId, idx) => {
                     const shift = day.shifts[shiftId];
                     const time = `${DateUtils.formatTime12h(shift.start)} - ${DateUtils.formatTime12h(shift.end)}`;
-                    const employee = shift.employee || '(Open)';
+                    const employee = shift.employee ? shift.employee.toUpperCase() : '(Open)';
                     const shiftNames = ['Day', 'Night', 'Morning'];
                     text += `  Shift ${idx + 1} (${shiftNames[idx]}): ${employee}\n`;
                     text += `    ⏰ ${time}\n`;
